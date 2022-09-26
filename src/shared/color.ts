@@ -29,8 +29,8 @@ export function cssToFigmaGradient(css: string): GradientPaint {
 
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
-    gradientStops: parsedGradient.colorStops.map((stop) => ({
-      position: Number(stop.length?.value || 0) / 100.0,
+    gradientStops: parsedGradient.colorStops.map((stop, index) => ({
+      position: (index + 1.0) / parsedGradient.colorStops.length,
       color:
         stop.type === "hex"
           ? hexToRgba(stop.value)
