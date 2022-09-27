@@ -28,28 +28,14 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
   console.log("parsedGradient", parsedGradient)
 
-  let gradientTransform: Transform = [
-    [1, 0, 0],
-    [0, 1, 0]
-  ]
-
   // CSS has a top-down default, figma has a right-left default when no angle is specified
   let rotationAngle = -Math.PI / 2.0
-  const moveMatrix = [
-    [1, 0, 0.5],
-    [0, 1, -0.5]
-  ]
-  const rotationMatrix = [
-    [Math.cos(rotationAngle), -Math.sin(rotationAngle), 0],
-    [Math.sin(rotationAngle), Math.cos(rotationAngle), 0]
-  ]
-  // gradientTransform = math.multiply(gradientTransform, rotationMatrix) as Transform
-  gradientTransform = rotationMatrix as Transform
+  const gradientTransform = compose(translate(0, 0.5), rotate(rotationAngle), translate(-0.5, 0))
 
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
     gradientStops: parsedGradient.colorStops.map((stop, index) => ({
-      position: (index + 1.0) / parsedGradient.colorStops.length,
+      position: index === 0 ? 0 : index / (parsedGradient.colorStops.length - 1),
       color:
         stop.type === "hex"
           ? hexToRgba(stop.value)
@@ -57,7 +43,10 @@ export function cssToFigmaGradient(css: string): GradientPaint {
           ? hexToRgba("#000000")
           : rgbaToFigmaRgba(stop.value)
     })),
-    gradientTransform: gradientTransform
+    gradientTransform: [
+      [gradientTransform.a, gradientTransform.c, gradientTransform.e],
+      [gradientTransform.b, gradientTransform.d, gradientTransform.f]
+    ]
   }
 
   return figmaGradient
