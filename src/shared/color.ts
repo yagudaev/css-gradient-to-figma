@@ -28,9 +28,9 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
   console.log("parsedGradient", parsedGradient)
 
-  // CSS has a top-down default, figma has a right-left default when no angle is specified
-  let rotationAngle = -Math.PI / 2.0
-  const gradientTransform = compose(translate(0, 0.5), rotate(rotationAngle), translate(-0.5, 0))
+  const rotationAngle = calculateRotationAngle(parsedGradient)
+  const [tx, ty] = calculateTranslationToCenter(parsedGradient)
+  const gradientTransform = compose(translate(0, 0.5), rotate(rotationAngle), translate(tx, ty))
 
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
@@ -67,4 +67,70 @@ export function cssToFigmaGradientTypes(
     default:
       throw "unsupported gradient type"
   }
+}
+
+function calculateRotationAngle(parsedGradient: GradientNode): number {
+  // CSS has a top-down default, figma has a right-left default when no angle is specified
+  const initialRotation = -Math.PI / 2.0
+  let additionalRotation = 0.0
+
+  // linear gradients
+  if (
+    parsedGradient.type === "linear-gradient" ||
+    parsedGradient.type === "repeating-linear-gradient"
+  ) {
+    if (parsedGradient.orientation?.type === "directional") {
+      switch (parsedGradient.orientation.value) {
+        case "left":
+          additionalRotation = -90
+          break
+        case "right":
+          additionalRotation = 90
+          break
+        case "bottom":
+          additionalRotation = 0
+          break
+        case "top":
+          additionalRotation = 180
+          break
+      }
+    }
+
+    if (!parsedGradient.orientation) {
+      additionalRotation = 0 // default to bottom
+    }
+  }
+
+  return initialRotation + degreesToRadians(additionalRotation)
+}
+
+function calculateTranslationToCenter(parsedGradient: GradientNode): [number, number] {
+  if (
+    parsedGradient.type === "linear-gradient" ||
+    parsedGradient.type === "repeating-linear-gradient"
+  ) {
+    if (parsedGradient.orientation?.type === "directional") {
+      switch (parsedGradient.orientation.value) {
+        case "left":
+          return [-1, -0.5]
+        case "right":
+          return [0, -0.5]
+        case "bottom":
+          return [-0.5, 0]
+        case "top":
+          return [-0.5, -1]
+      }
+    }
+
+    if (!parsedGradient.orientation) {
+      return [-0.5, 0] // default to bottom
+    }
+  }
+
+  return [0, 0]
+}
+
+function degreesToRadians(degrees: number) {
+  var pi = Math.PI
+  return degrees * (pi / 180)
 }
