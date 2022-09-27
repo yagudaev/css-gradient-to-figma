@@ -1,6 +1,11 @@
 import hexRgbLib, { RgbaObject as RGBALib } from "hex-rgb"
 import rgbToHexLib from "rgb-hex"
-import { parse as parseGradient, GradientNode } from "gradient-parser"
+import {
+  parse as parseGradient,
+  GradientNode,
+  LinearGradientNode,
+  RepeatingLinearGradientNode
+} from "gradient-parser"
 import { rotate, translate, compose, scale } from "transformation-matrix"
 
 export function hexToRgb(hex: string): RGB {
@@ -118,14 +123,21 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         default:
           throw "unsupported linear gradient orientation"
       }
-    }
-
-    if (!parsedGradient.orientation) {
+    } else if (parsedGradient.orientation?.type === "angular") {
+      additionalRotation = parseAngle(parsedGradient.orientation.value)
+    } else if (!parsedGradient.orientation) {
       additionalRotation = 0 // default to bottom
     }
   }
 
   return initialRotation + degreesToRadians(additionalRotation)
+}
+
+function parseAngle(angleStr: string): number {
+  let angle = Number(angleStr)
+  // positive angles only
+  angle = angle < 0 ? 360 + angle : angle
+  return angle
 }
 
 function calculateScale(parsedGradient: GradientNode): [number, number] {
@@ -153,9 +165,9 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
         default:
           throw "unsupported linear gradient orientation"
       }
-    }
-
-    if (!parsedGradient.orientation) {
+    } else if (parsedGradient.orientation?.type === "angular") {
+      return [1.0, 1.0]
+    } else if (!parsedGradient.orientation) {
       return [1.0, 1.0] // default to bottom
     }
   }
@@ -193,9 +205,26 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
         default:
           throw "unsupported linear gradient orientation"
       }
-    }
-
-    if (!parsedGradient.orientation) {
+    } else if (parsedGradient.orientation?.type === "angular") {
+      const angle = parseAngle(parsedGradient.orientation.value)
+      if (angle === 0) {
+        return [-0.5, 0]
+      } else if (angle === 90) {
+        return [0, -0.5]
+      } else if (angle === 180) {
+        return [-0.5, -1]
+      } else if (angle === 270) {
+        return [-1, -0.5]
+      } else if (angle > 0 && angle < 90) {
+        return [0, 0]
+      } else if (angle > 90 && angle < 180) {
+        return [0, -1]
+      } else if (angle > 180 && angle < 270) {
+        return [-1, -1]
+      } else if (angle > 270 && angle < 360) {
+        return [-1, 0]
+      }
+    } else if (!parsedGradient.orientation) {
       return [-0.5, 0] // default to bottom
     }
   }
