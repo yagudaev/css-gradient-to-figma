@@ -1,6 +1,7 @@
 import hexRgbLib, { RgbaObject as RGBALib } from "hex-rgb"
 import rgbToHexLib from "rgb-hex"
 import { parse as parseGradient, GradientNode } from "gradient-parser"
+import { rotate, translate, compose } from "transformation-matrix"
 
 export function hexToRgb(hex: string): RGB {
   console.log("trying to conver hex to rgb", { hex })
@@ -27,6 +28,24 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
   console.log("parsedGradient", parsedGradient)
 
+  let gradientTransform: Transform = [
+    [1, 0, 0],
+    [0, 1, 0]
+  ]
+
+  // CSS has a top-down default, figma has a right-left default when no angle is specified
+  let rotationAngle = -Math.PI / 2.0
+  const moveMatrix = [
+    [1, 0, 0.5],
+    [0, 1, -0.5]
+  ]
+  const rotationMatrix = [
+    [Math.cos(rotationAngle), -Math.sin(rotationAngle), 0],
+    [Math.sin(rotationAngle), Math.cos(rotationAngle), 0]
+  ]
+  // gradientTransform = math.multiply(gradientTransform, rotationMatrix) as Transform
+  gradientTransform = rotationMatrix as Transform
+
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
     gradientStops: parsedGradient.colorStops.map((stop, index) => ({
@@ -38,10 +57,7 @@ export function cssToFigmaGradient(css: string): GradientPaint {
           ? hexToRgba("#000000")
           : rgbaToFigmaRgba(stop.value)
     })),
-    gradientTransform: [
-      [1, 0, 0],
-      [0, 1, 0]
-    ]
+    gradientTransform: gradientTransform
   }
 
   return figmaGradient
