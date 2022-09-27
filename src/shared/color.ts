@@ -103,6 +103,10 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         case "top left":
           additionalRotation = -135
           break
+        case "right top":
+        case "top right":
+          additionalRotation = 135
+          break
       }
     }
 
@@ -128,6 +132,8 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
           return [1.0, 1.0]
         case "left top":
         case "top left":
+        case "right top":
+        case "top right":
           const scale = 1 / Math.sqrt(2)
           return [scale, 1.0]
       }
@@ -159,6 +165,9 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
         case "left top":
         case "top left":
           return [-1, -1]
+        case "right top":
+        case "top right":
+          return [0, -1]
       }
     }
 
