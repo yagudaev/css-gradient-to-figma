@@ -111,6 +111,12 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         case "bottom left":
           additionalRotation = -45
           break
+        case "right bottom":
+        case "bottom right":
+          additionalRotation = 45
+          break
+        default:
+          throw "unsupported linear gradient orientation"
       }
     }
 
@@ -140,8 +146,12 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
         case "top right":
         case "left bottom":
         case "bottom left":
+        case "right bottom":
+        case "bottom right":
           const scale = 1 / Math.sqrt(2)
           return [scale, 1.0]
+        default:
+          throw "unsupported linear gradient orientation"
       }
     }
 
@@ -177,6 +187,11 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
         case "left bottom":
         case "bottom left":
           return [-1, 0]
+        case "right bottom":
+        case "bottom right":
+          return [0, 0]
+        default:
+          throw "unsupported linear gradient orientation"
       }
     }
 
