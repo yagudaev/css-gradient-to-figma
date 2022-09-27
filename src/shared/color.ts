@@ -1,7 +1,7 @@
 import hexRgbLib, { RgbaObject as RGBALib } from "hex-rgb"
 import rgbToHexLib from "rgb-hex"
 import { parse as parseGradient, GradientNode } from "gradient-parser"
-import { rotate, translate, compose } from "transformation-matrix"
+import { rotate, translate, compose, scale } from "transformation-matrix"
 
 export function hexToRgb(hex: string): RGB {
   console.log("trying to conver hex to rgb", { hex })
@@ -28,9 +28,15 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
   console.log("parsedGradient", parsedGradient)
 
+  const [sx, sy] = calculateScale(parsedGradient)
   const rotationAngle = calculateRotationAngle(parsedGradient)
   const [tx, ty] = calculateTranslationToCenter(parsedGradient)
-  const gradientTransform = compose(translate(0, 0.5), rotate(rotationAngle), translate(tx, ty))
+  const gradientTransform = compose(
+    translate(0, 0.5),
+    scale(sx, sy),
+    rotate(rotationAngle),
+    translate(tx, ty)
+  )
 
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
@@ -93,6 +99,10 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         case "top":
           additionalRotation = 180
           break
+        case "left top":
+        case "top left":
+          additionalRotation = -135
+          break
       }
     }
 
@@ -102,6 +112,33 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
   }
 
   return initialRotation + degreesToRadians(additionalRotation)
+}
+
+function calculateScale(parsedGradient: GradientNode): [number, number] {
+  if (
+    parsedGradient.type === "linear-gradient" ||
+    parsedGradient.type === "repeating-linear-gradient"
+  ) {
+    if (parsedGradient.orientation?.type === "directional") {
+      switch (parsedGradient.orientation.value) {
+        case "left":
+        case "right":
+        case "bottom":
+        case "top":
+          return [1.0, 1.0]
+        case "left top":
+        case "top left":
+          const scale = 1 / Math.sqrt(2)
+          return [scale, 1.0]
+      }
+    }
+
+    if (!parsedGradient.orientation) {
+      return [1.0, 1.0] // default to bottom
+    }
+  }
+
+  return [1.0, 1.0]
 }
 
 function calculateTranslationToCenter(parsedGradient: GradientNode): [number, number] {
@@ -119,6 +156,9 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
           return [-0.5, 0]
         case "top":
           return [-0.5, -1]
+        case "left top":
+        case "top left":
+          return [-1, -1]
       }
     }
 
