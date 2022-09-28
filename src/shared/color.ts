@@ -82,7 +82,8 @@ export function cssToFigmaGradientTypes(
 
 function calculateRotationAngle(parsedGradient: GradientNode): number {
   // CSS has a top-down default, figma has a right-left default when no angle is specified
-  const initialRotation = -Math.PI / 2.0
+  // CSS has a default unspecified angle of 180deg, figma has a default unspecified angle of 0deg
+  const initialRotation = -Math.PI / 2.0 // math rotation with css 180deg default
   let additionalRotation = 0.0
 
   // linear gradients
@@ -124,7 +125,15 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
           throw "unsupported linear gradient orientation"
       }
     } else if (parsedGradient.orientation?.type === "angular") {
-      additionalRotation = parseAngle(parsedGradient.orientation.value)
+      // css angle is clockwise from the y-axis, figma angles are counter-clockwise from the x-axis
+      additionalRotation = (parseCssAngle(parsedGradient.orientation.value) + 90) % 360
+      console.log(
+        "parsed angle",
+        parsedGradient.orientation.value,
+        parseCssAngle(parsedGradient.orientation.value),
+        additionalRotation
+      )
+      return degreesToRadians(additionalRotation)
     } else if (!parsedGradient.orientation) {
       additionalRotation = 0 // default to bottom
     }
@@ -133,11 +142,16 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
   return initialRotation + degreesToRadians(additionalRotation)
 }
 
-function parseAngle(angleStr: string): number {
-  let angle = Number(angleStr)
+type FigmaAngle = number // 0-360, CCW from x-axis
+type CssAngle = number // 0-360, CW from y-axis
+
+function parseCssAngle(angleStr: string): FigmaAngle {
+  let angle = Number(angleStr) as CssAngle
   // positive angles only
   angle = angle < 0 ? 360 + angle : angle
-  return angle
+  // convert to CCW angle use by figma
+  angle = 360 - angle
+  return angle % 360
 }
 
 function calculateScale(parsedGradient: GradientNode): [number, number] {
@@ -206,23 +220,23 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
           throw "unsupported linear gradient orientation"
       }
     } else if (parsedGradient.orientation?.type === "angular") {
-      const angle = parseAngle(parsedGradient.orientation.value)
+      const angle = parseCssAngle(parsedGradient.orientation.value)
       if (angle === 0) {
-        return [-0.5, 0]
-      } else if (angle === 90) {
-        return [0, -0.5]
-      } else if (angle === 180) {
         return [-0.5, -1]
-      } else if (angle === 270) {
+      } else if (angle === 90) {
         return [-1, -0.5]
+      } else if (angle === 180) {
+        return [-0.5, 0]
+      } else if (angle === 270) {
+        return [0, -0.5]
       } else if (angle > 0 && angle < 90) {
-        return [0, 0]
-      } else if (angle > 90 && angle < 180) {
-        return [0, -1]
-      } else if (angle > 180 && angle < 270) {
         return [-1, -1]
-      } else if (angle > 270 && angle < 360) {
+      } else if (angle > 90 && angle < 180) {
         return [-1, 0]
+      } else if (angle > 180 && angle < 270) {
+        return [0, 0]
+      } else if (angle > 270 && angle < 360) {
+        return [0, -1]
       }
     } else if (!parsedGradient.orientation) {
       return [-0.5, 0] // default to bottom
