@@ -17,8 +17,9 @@ export default function () {
   })
 
   on<ReqInsertCSSHandler>("REQ_INSERT_CSS", function (css: string) {
-    createRectangleWithFill(css)
+    // createRectangleWithFill(css)
     // testGradientAngles()
+    testRadialGradients()
   })
 }
 
@@ -70,4 +71,18 @@ function testGradientAngles() {
   createRectangleWithFill(
     "linear-gradient(315deg, rgb(236, 72, 153), rgb(239, 68, 68), rgb(234, 179, 8))"
   )
+}
+
+function testRadialGradients() {
+  // replace center, center with just center
+  createRectangleWithFill(
+    "radial-gradient(at center, rgb(253, 230, 138), rgb(124, 58, 237), rgb(12, 74, 110))"
+  )
+  // createRectangleWithFill(
+  //   "radial-gradient(at 50% 50%, rgb(253, 230, 138), rgb(124, 58, 237), rgb(12, 74, 110))"
+  // )
+  createRectangleWithFill(
+    "radial-gradient(rgb(253, 230, 138), rgb(124, 58, 237), rgb(12, 74, 110))"
+  )
+  // 'radial-gradient(at center top, rgb(253, 230, 138), rgb(124, 58, 237), rgb(12, 74, 110))'
 }
