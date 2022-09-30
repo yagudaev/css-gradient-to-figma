@@ -147,11 +147,14 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         additionalRotation
       )
       return degreesToRadians(additionalRotation)
-    } else if ((parsedGradient.type as any) === "radial-gradient") {
-      additionalRotation = -90
     } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
       additionalRotation = 0 // default to bottom
     }
+  } else if (parsedGradient.type === "radial-gradient") {
+    // if size is 'furthers-corner' which is the default, then the rotation is 45 to reach corner
+    // any corner will do, but we will use the bottom right corner
+    // since the parser is not smart enough to know that, we just assume that for now
+    additionalRotation = 45
   }
 
   return initialRotation + degreesToRadians(additionalRotation)
@@ -200,7 +203,10 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
       return [1.0, 1.0] // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
-    return [1.0, 1.0]
+    // if size is 'furthers-corner' which is the default, then the scale is sqrt(2)
+    // since the parser is not smart enough to know that, we just assume that for now
+    const scale = 1 / Math.sqrt(2)
+    return [scale, scale]
   }
 
   return [1.0, 1.0]
@@ -263,7 +269,7 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
       parsedGradient.colorStops[0].length?.value === "center" ||
       parsedGradient.colorStops[0].length === undefined
     ) {
-      return [-0.5, 0]
+      return [0, 0]
     }
 
     return [0, 0]
