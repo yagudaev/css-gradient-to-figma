@@ -1,4 +1,6 @@
 {
+  "license": "MIT",
+  "author": "Michael Yagudaev<michael@nano3labs.com>",
   "dependencies": {
     "@create-figma-plugin/ui": "^2.1.3",
     "@create-figma-plugin/utilities": "^2.1.3",
