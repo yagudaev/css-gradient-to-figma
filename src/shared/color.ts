@@ -42,11 +42,24 @@ export function cssToFigmaGradient(css: string): GradientPaint {
     rotate(rotationAngle),
     translate(tx, ty)
   )
+  let colorStops = parsedGradient.colorStops
+  if (
+    parsedGradient.type === "radial-gradient" ||
+    parsedGradient.type === "repeating-radial-gradient"
+  ) {
+    if (
+      colorStops[0].type === "literal" &&
+      (colorStops[0].length?.type as string) === "position-keyword"
+    ) {
+      colorStops = colorStops.slice(1)
+    }
+  }
+  console.log("color stops", colorStops)
 
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
-    gradientStops: parsedGradient.colorStops.map((stop, index) => ({
-      position: index === 0 ? 0 : index / (parsedGradient.colorStops.length - 1),
+    gradientStops: colorStops.map((stop, index) => ({
+      position: index === 0 ? 0 : index / (colorStops.length - 1),
       color:
         stop.type === "hex"
           ? hexToRgba(stop.value)
@@ -134,9 +147,14 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         additionalRotation
       )
       return degreesToRadians(additionalRotation)
-    } else if (!parsedGradient.orientation) {
+    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
       additionalRotation = 0 // default to bottom
     }
+  } else if (parsedGradient.type === "radial-gradient") {
+    // if size is 'furthers-corner' which is the default, then the rotation is 45 to reach corner
+    // any corner will do, but we will use the bottom right corner
+    // since the parser is not smart enough to know that, we just assume that for now
+    additionalRotation = 45
   }
 
   return initialRotation + degreesToRadians(additionalRotation)
@@ -184,6 +202,11 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
     } else if (!parsedGradient.orientation) {
       return [1.0, 1.0] // default to bottom
     }
+  } else if (parsedGradient.type === "radial-gradient") {
+    // if size is 'furthers-corner' which is the default, then the scale is sqrt(2)
+    // since the parser is not smart enough to know that, we just assume that for now
+    const scale = 1 / Math.sqrt(2)
+    return [scale, scale]
   }
 
   return [1.0, 1.0]
@@ -238,9 +261,18 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
       } else if (angle > 270 && angle < 360) {
         return [0, -1]
       }
-    } else if (!parsedGradient.orientation) {
+    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
       return [-0.5, 0] // default to bottom
     }
+  } else if (parsedGradient.type === "radial-gradient") {
+    if (
+      parsedGradient.colorStops[0].length?.value === "center" ||
+      parsedGradient.colorStops[0].length === undefined
+    ) {
+      return [0, 0]
+    }
+
+    return [0, 0]
   }
 
   return [0, 0]
