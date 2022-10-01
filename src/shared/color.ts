@@ -198,7 +198,14 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
           throw "unsupported linear gradient orientation"
       }
     } else if (parsedGradient.orientation?.type === "angular") {
-      return [1.0, 1.0]
+      // from w3c: abs(W * sin(A)) + abs(H * cos(A))
+      // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
+      // W and H are unit vectors, so we can just use 1
+      const scale =
+        Math.abs(Math.sin(degreesToRadians(parseCssAngle(parsedGradient.orientation.value)))) +
+        Math.abs(Math.cos(degreesToRadians(parseCssAngle(parsedGradient.orientation.value))))
+
+      return [1.0 / scale, 1.0 / scale]
     } else if (!parsedGradient.orientation) {
       return [1.0, 1.0] // default to bottom
     }
