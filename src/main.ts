@@ -17,9 +17,9 @@ export default function () {
   })
 
   on<ReqInsertCSSHandler>("REQ_INSERT_CSS", function (css: string) {
-    // createRectangleWithFill(css)
+    createRectangleWithFill(css)
     // testGradientAngles()
-    testRadialGradients()
+    // testRadialGradients()
   })
 }
 
