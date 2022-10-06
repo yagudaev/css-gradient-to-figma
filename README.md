@@ -14,7 +14,7 @@
 To build the plugin:
 
 ```
-$ npm run build
+$ yarn run build
 ```
 
 This will generate a [`manifest.json`](https://figma.com/plugin-docs/manifest/) file and a `build/` directory containing the JavaScript bundle(s) for the plugin.
@@ -22,7 +22,7 @@ This will generate a [`manifest.json`](https://figma.com/plugin-docs/manifest/) 
 To watch for code changes and rebuild the plugin automatically:
 
 ```
-$ npm run watch
+$ yarn run watch
 ```
 
 ### Install the plugin
