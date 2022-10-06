@@ -11,7 +11,7 @@ function Plugin() {
   }
   useWindowResize(onWindowResize, {
     maxHeight: 320,
-    maxWidth: 320,
+    maxWidth: 780,
     minHeight: 120,
     minWidth: 120,
     resizeBehaviorOnDoubleClick: "minimize"
