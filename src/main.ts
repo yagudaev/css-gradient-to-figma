@@ -38,7 +38,7 @@ function createRectangleWithFill(css: string) {
 
   // check if target has fills property
   if ("fills" in target) {
-    const gradient = cssToFigmaGradient(css)
+    const gradient = cssToFigmaGradient(css, target.width, target.height)
     target.fills = [gradient]
   } else {
     figma.notify("Please select a shape or frame with a fill")
