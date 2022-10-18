@@ -88,7 +88,8 @@ function getPosition(
   if (stop.length) {
     const value = parseFloat(stop.length.value)
     if (value <= 0) {
-      // TODO negative values stop supported by figma, but we could grow the gradient vector ?
+      // TODO: add support for negative color stops, figma doesn't support it, instead we will
+      // have to scale the transform to fit the negative color stops
       return 0
     }
     switch (stop.length.type) {
