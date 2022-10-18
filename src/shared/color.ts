@@ -4,7 +4,8 @@ import {
   parse as parseGradient,
   GradientNode,
   LinearGradientNode,
-  RepeatingLinearGradientNode
+  RepeatingLinearGradientNode,
+  ColorStop
 } from "gradient-parser"
 import { rotate, translate, compose, scale } from "transformation-matrix"
 
@@ -28,11 +29,12 @@ export function rgbaToFigmaRgba([r, g, b, a]: [string, string, string, string?])
   return { r: Number(r) / 255.0, g: Number(g) / 255.0, b: Number(b) / 255.0, a: Number(a) || 1.0 }
 }
 
-export function cssToFigmaGradient(css: string): GradientPaint {
+export function cssToFigmaGradient(css: string, width = 1, height = 1): GradientPaint {
   console.log("trying to parse gradient", css)
   const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
   console.log("parsedGradient", parsedGradient)
 
+  const gradientLength = calculateLength(parsedGradient, width, height)
   const [sx, sy] = calculateScale(parsedGradient)
   const rotationAngle = calculateRotationAngle(parsedGradient)
   const [tx, ty] = calculateTranslationToCenter(parsedGradient)
@@ -59,7 +61,7 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
     gradientStops: colorStops.map((stop, index) => ({
-      position: index === 0 ? 0 : index / (colorStops.length - 1),
+      position: getPosition(stop, index, colorStops.length, gradientLength),
       color:
         stop.type === "hex"
           ? hexToRgba(stop.value)
@@ -74,6 +76,32 @@ export function cssToFigmaGradient(css: string): GradientPaint {
   }
 
   return figmaGradient
+}
+
+function getPosition(
+  stop: ColorStop,
+  index: number,
+  total: number,
+  gradientLength: number
+): number {
+  if (total <= 1) return 0
+  if (stop.length) {
+    const value = parseFloat(stop.length.value)
+    if (value <= 0) {
+      // TODO: add support for negative color stops, figma doesn't support it, instead we will
+      // have to scale the transform to fit the negative color stops
+      return 0
+    }
+    switch (stop.length.type) {
+      case "%":
+        return Math.min(1, value / 100)
+      case "px":
+        return Math.min(1, value / gradientLength)
+      default:
+        console.warn("Unsupported stop position unit: ", stop.length.type)
+    }
+  }
+  return index / (total - 1)
 }
 
 export function cssToFigmaGradientTypes(
@@ -170,6 +198,47 @@ function parseCssAngle(angleStr: string): FigmaAngle {
   // convert to CCW angle use by figma
   angle = 360 - angle
   return angle % 360
+}
+
+function calculateLength(parsedGradient: GradientNode, width: number, height: number): number {
+  if (
+    parsedGradient.type === "linear-gradient" ||
+    parsedGradient.type === "repeating-linear-gradient"
+  ) {
+    if (parsedGradient.orientation?.type === "directional") {
+      switch (parsedGradient.orientation.value) {
+        case "left":
+        case "right":
+          return width
+        case "bottom":
+        case "top":
+          return height
+        case "left top":
+        case "top left":
+        case "right top":
+        case "top right":
+        case "left bottom":
+        case "bottom left":
+        case "right bottom":
+        case "bottom right":
+          return Math.sqrt(width ^ (2 + height) ^ 2)
+        default:
+          throw "unsupported linear gradient orientation"
+      }
+    } else if (parsedGradient.orientation?.type === "angular") {
+      // from w3c: abs(W * sin(A)) + abs(H * cos(A))
+      // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
+      const rads = degreesToRadians(parseCssAngle(parsedGradient.orientation.value))
+      return Math.abs(width * Math.sin(rads)) + Math.abs(height * Math.cos(rads))
+    } else if (!parsedGradient.orientation) {
+      return height // default to bottom
+    }
+  } else if (parsedGradient.type === "radial-gradient") {
+    // if size is 'furthers-corner' which is the default, then the scale is sqrt(2)
+    // since the parser is not smart enough to know that, we just assume that for now
+    return Math.sqrt(2)
+  }
+  throw "unsupported gradient type"
 }
 
 function calculateScale(parsedGradient: GradientNode): [number, number] {
