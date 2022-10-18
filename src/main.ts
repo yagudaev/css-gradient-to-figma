@@ -19,6 +19,7 @@ export default function () {
   on<ReqInsertCSSHandler>("REQ_INSERT_CSS", function (css: string) {
     createRectangleWithFill(css)
     // testGradientAngles()
+    // testGradientStops()
     // testRadialGradients()
   })
 }
@@ -70,6 +71,17 @@ function testGradientAngles() {
   )
   createRectangleWithFill(
     "linear-gradient(315deg, rgb(236, 72, 153), rgb(239, 68, 68), rgb(234, 179, 8))"
+  )
+
+  createRectangleWithFill("linear-gradient(-45deg, #f00, #0f0)")
+}
+
+function testGradientStops() {
+  createRectangleWithFill(
+    "linear-gradient(45deg, rgb(236, 72, 153) 25%, rgb(239, 68, 68) 25%, rgb(239, 68, 68) 75%, rgb(234, 179, 8) 75%)"
+  )
+  createRectangleWithFill(
+    "linear-gradient(45deg, rgb(236, 72, 153) 25px, rgb(239, 68, 68) 25px, rgb(239, 68, 68) 75px, rgb(234, 179, 8) 75px)"
   )
 }
 
