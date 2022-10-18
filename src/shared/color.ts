@@ -78,22 +78,29 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
   return figmaGradient
 }
 
-function getPosition(stop: ColorStop, index: number, total: number, gradientLength: number): number {
-  if (total <= 1) return 0;
+function getPosition(
+  stop: ColorStop,
+  index: number,
+  total: number,
+  gradientLength: number
+): number {
+  if (total <= 1) return 0
   if (stop.length) {
     const value = parseFloat(stop.length.value)
     if (value <= 0) {
-      // TODO negative values stop supported by figma, but we could grow the gradient vector ? 
-      return 0;
+      // TODO negative values stop supported by figma, but we could grow the gradient vector ?
+      return 0
     }
     switch (stop.length.type) {
-      case "%": return Math.min(1, value/100);
-      case "px": return Math.min(1, value/gradientLength);
+      case "%":
+        return Math.min(1, value / 100)
+      case "px":
+        return Math.min(1, value / gradientLength)
       default:
         console.warn("Unsupported stop position unit: ", stop.length.type)
     }
   }
-  return index/(total-1)
+  return index / (total - 1)
 }
 
 export function cssToFigmaGradientTypes(
@@ -201,10 +208,10 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
       switch (parsedGradient.orientation.value) {
         case "left":
         case "right":
-          return width;
+          return width
         case "bottom":
         case "top":
-          return height;
+          return height
         case "left top":
         case "top left":
         case "right top":
@@ -213,17 +220,17 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
         case "bottom left":
         case "right bottom":
         case "bottom right":
-          return Math.sqrt(width^2+height^2)
+          return Math.sqrt(width ^ (2 + height) ^ 2)
         default:
           throw "unsupported linear gradient orientation"
       }
     } else if (parsedGradient.orientation?.type === "angular") {
       // from w3c: abs(W * sin(A)) + abs(H * cos(A))
       // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
-      const rads = degreesToRadians(parseCssAngle(parsedGradient.orientation.value));
-      return Math.abs(width*Math.sin(rads)) + Math.abs(height*Math.cos(rads))
+      const rads = degreesToRadians(parseCssAngle(parsedGradient.orientation.value))
+      return Math.abs(width * Math.sin(rads)) + Math.abs(height * Math.cos(rads))
     } else if (!parsedGradient.orientation) {
-      return height; // default to bottom
+      return height // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
     // if size is 'furthers-corner' which is the default, then the scale is sqrt(2)
