@@ -100,8 +100,8 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
           additionalRotation = -90
           break
@@ -135,11 +135,11 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
       }
     } else {
       // css angle is clockwise from the y-axis, figma angles are counter-clockwise from the x-axis
-      additionalRotation = (convertCssAngle(parsedGradient.orientation.value) + 90) % 360
+      additionalRotation = (convertCssAngle(parsedGradient.gradientLine.value) + 90) % 360
       console.log(
         "parsed angle",
-        parsedGradient.orientation.value,
-        convertCssAngle(parsedGradient.orientation.value),
+        parsedGradient.gradientLine.value,
+        convertCssAngle(parsedGradient.gradientLine.value),
         additionalRotation
       )
       return degreesToRadians(additionalRotation)
@@ -170,8 +170,8 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
         case "right":
           return width
@@ -190,12 +190,12 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation.type === "angular") {
+    } else if (parsedGradient.gradientLine.type === "angle") {
       // from w3c: abs(W * sin(A)) + abs(H * cos(A))
       // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
-      const rads = degreesToRadians(convertCssAngle(parsedGradient.orientation.value))
+      const rads = degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value))
       return Math.abs(width * Math.sin(rads)) + Math.abs(height * Math.cos(rads))
-    } else if (!parsedGradient.orientation) {
+    } else if (!parsedGradient.gradientLine) {
       return height // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
@@ -211,8 +211,8 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
         case "right":
         case "bottom":
@@ -231,13 +231,13 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation.type === "angular") {
+    } else if (parsedGradient.gradientLine.type === "angle") {
       // from w3c: abs(W * sin(A)) + abs(H * cos(A))
       // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
       // W and H are unit vectors, so we can just use 1
       const scale =
-        Math.abs(Math.sin(degreesToRadians(convertCssAngle(parsedGradient.orientation.value)))) +
-        Math.abs(Math.cos(degreesToRadians(convertCssAngle(parsedGradient.orientation.value))))
+        Math.abs(Math.sin(degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value)))) +
+        Math.abs(Math.cos(degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value))))
 
       return [1.0 / scale, 1.0 / scale]
     }
@@ -256,8 +256,8 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
           return [-1, -0.5]
         case "right":
@@ -281,8 +281,8 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation.type === "angular") {
-      const angle = convertCssAngle(parsedGradient.orientation.value)
+    } else if (parsedGradient.gradientLine.type === "angle") {
+      const angle = convertCssAngle(parsedGradient.gradientLine.value)
       if (angle === 0) {
         return [-0.5, -1]
       } else if (angle === 90) {
@@ -300,7 +300,7 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
       } else if (angle > 270 && angle < 360) {
         return [0, -1]
       }
-    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
+    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.gradientLine) {
       return [-0.5, 0] // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {

@@ -31,8 +31,8 @@ test("parseGradient(linear-gradient)", () => {
             "type": "color-stop",
           },
         ],
-        "orientation": {
-          "type": "directional",
+        "gradientLine": {
+          "type": "side-or-corner",
           "value": "left",
         },
         "type": "linear-gradient",
@@ -73,8 +73,8 @@ test("parseGradient(linear-gradient)", () => {
             "type": "color-stop",
           },
         ],
-        "orientation": {
-          "type": "angular",
+        "gradientLine": {
+          "type": "angle",
           "value": 90,
         },
         "type": "linear-gradient",

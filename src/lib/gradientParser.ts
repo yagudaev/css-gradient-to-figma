@@ -4,8 +4,8 @@ import namesPlugin from "colord/plugins/names"
 
 extend([namesPlugin])
 
-export interface DirectionalNode {
-  type: "directional"
+export interface SideOrCornerGradientLine {
+  type: "side-or-corner"
   value:
     | "left"
     | "top"
@@ -28,9 +28,9 @@ export type GradientType =
   | "repeating-radial-gradient"
   | "conic-gradient"
 
-export type AngularNode = {
-  type: "angular"
-  // degrees
+export type AngleGradientLine = {
+  type: "angle"
+  // Normalized to degrees
   value: number
 }
 
@@ -54,7 +54,7 @@ export type ColorHint = {
 
 export type LinearGradient = {
   type: "linear-gradient" | "repeating-linear-gradient"
-  orientation: DirectionalNode | AngularNode
+  gradientLine: SideOrCornerGradientLine | AngleGradientLine
   colorStops: (ColorStop | ColorHint)[]
 }
 
@@ -99,25 +99,25 @@ export function parseGradient(css: string): GradientNode[] {
           type: type as LinearGradient["type"]
         }
         if (args[0][0].value === "to") {
-          ret.orientation = {
-            type: "directional",
+          ret.gradientLine = {
+            type: "side-or-corner",
             value: args
               .shift()!
               .slice(1)
               .map((it) => it.value)
-              .join(" ") as DirectionalNode["value"]
+              .join(" ") as SideOrCornerGradientLine["value"]
           }
         } else {
           const first = unit(args[0][0].value)
           if (first && ["deg", "turn", "rad", "grad"].includes(first.unit)) {
-            ret.orientation = {
-              type: "angular",
+            ret.gradientLine = {
+              type: "angle",
               value: toDegrees(first)
             }
             args.shift()
           } else {
-            ret.orientation = {
-              type: "angular",
+            ret.gradientLine = {
+              type: "angle",
               value: 180
             }
           }
