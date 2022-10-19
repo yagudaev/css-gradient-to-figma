@@ -63,7 +63,7 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
     type: cssToFigmaGradientTypes(parsedGradient.type),
     gradientStops: colorStops.map((stop, index) => {
       const position = getPosition(stop, index, colorStops.length, gradientLength, previousPosition)
-      previousPosition = position;
+      previousPosition = position
       return {
         position,
         color:
@@ -92,7 +92,7 @@ function getPosition(
 ): number {
   if (total <= 1) return 0
   // browsers will enforce increasing positions (red 50%, blue 0px) becomes (red 50%, blue 50%)
-  const normalize = (v: number) => Math.max(previousPosition, Math.min(1,v))
+  const normalize = (v: number) => Math.max(previousPosition, Math.min(1, v))
   if (stop.length) {
     const value = parseFloat(stop.length.value)
     if (value <= 0) {
