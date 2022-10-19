@@ -83,6 +83,7 @@ function testGradientStops() {
   createRectangleWithFill(
     "linear-gradient(45deg, rgb(236, 72, 153) 25px, rgb(239, 68, 68) 25px, rgb(239, 68, 68) 75px, rgb(234, 179, 8) 75px)"
   )
+  createRectangleWithFill("linear-gradient(to right, #f00 50%, #00f 0px)")
 
   // not yet supported, out of range numbers
   // createRectangleWithFill("linear-gradient(to right, #f0f -50%, #f00 140%)")
