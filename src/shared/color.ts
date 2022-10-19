@@ -58,17 +58,22 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
   }
   console.log("color stops", colorStops)
 
+  let previousPosition: number | undefined = undefined
   const figmaGradient: GradientPaint = {
     type: cssToFigmaGradientTypes(parsedGradient.type),
-    gradientStops: colorStops.map((stop, index) => ({
-      position: getPosition(stop, index, colorStops.length, gradientLength),
-      color:
-        stop.type === "hex"
-          ? hexToRgba(stop.value)
-          : stop.type === "literal"
-          ? hexToRgba("#000000")
-          : rgbaToFigmaRgba(stop.value)
-    })),
+    gradientStops: colorStops.map((stop, index) => {
+      const position = getPosition(stop, index, colorStops.length, gradientLength, previousPosition)
+      previousPosition = position
+      return {
+        position,
+        color:
+          stop.type === "hex"
+            ? hexToRgba(stop.value)
+            : stop.type === "literal"
+            ? hexToRgba("#000000")
+            : rgbaToFigmaRgba(stop.value)
+      }
+    }),
     gradientTransform: [
       [gradientTransform.a, gradientTransform.c, gradientTransform.e],
       [gradientTransform.b, gradientTransform.d, gradientTransform.f]
@@ -82,26 +87,29 @@ function getPosition(
   stop: ColorStop,
   index: number,
   total: number,
-  gradientLength: number
+  gradientLength: number,
+  previousPosition = 0
 ): number {
   if (total <= 1) return 0
+  // browsers will enforce increasing positions (red 50%, blue 0px) becomes (red 50%, blue 50%)
+  const normalize = (v: number) => Math.max(previousPosition, Math.min(1, v))
   if (stop.length) {
     const value = parseFloat(stop.length.value)
     if (value <= 0) {
       // TODO: add support for negative color stops, figma doesn't support it, instead we will
       // have to scale the transform to fit the negative color stops
-      return 0
+      return normalize(0)
     }
     switch (stop.length.type) {
       case "%":
-        return Math.min(1, value / 100)
+        return normalize(value / 100)
       case "px":
-        return Math.min(1, value / gradientLength)
+        return normalize(value / gradientLength)
       default:
         console.warn("Unsupported stop position unit: ", stop.length.type)
     }
   }
-  return index / (total - 1)
+  return normalize(index / (total - 1))
 }
 
 export function cssToFigmaGradientTypes(
