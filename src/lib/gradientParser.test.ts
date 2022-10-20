@@ -110,7 +110,12 @@ test("parseGradient(radial-gradient)", () => {
           ],
           "endingShape": "circle",
           "position": "top left",
-          "size": "farthest-corner",
+          "size": [
+            {
+              "unit": "em",
+              "value": 5,
+            },
+          ],
           "type": "radial-gradient",
         },
       ]

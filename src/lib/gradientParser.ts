@@ -125,7 +125,7 @@ export function parseGradient(css: string): GradientNode[] {
               .join(" ") as SideOrCornerGradientLine["value"]
           }
         } else {
-          const first = toUnit(args[0][0])
+          const first = toUnit(args[0][0], "deg")
           if (first && ANGLE_UNITS.includes(first.unit)) {
             ret.gradientLine = {
               type: "angle",
@@ -149,7 +149,7 @@ export function parseGradient(css: string): GradientNode[] {
           position: "center"
         }
         let hasOptionsArg = false
-        for (let i = 0; i < args[0].length; i++) {
+        loop: for (let i = 0; i < args[0].length; i++) {
           const arg = args[0][i]
           switch (arg.value) {
             case "circle":
@@ -167,9 +167,17 @@ export function parseGradient(css: string): GradientNode[] {
             case "at":
               hasOptionsArg = true
               ret.position = stringifySpacedArgs(args[0].slice(i + 1))
-              break
+              break loop
+            default:
+              let length = toUnit(arg, "px")
+              if (length) {
+                hasOptionsArg = true
+                if (!Array.isArray(ret.size)) ret.size = []
+                ret.size.push(length)
+              } else if (!hasOptionsArg) {
+                break loop
+              }
           }
-          // TODO dimension size
         }
         if (hasOptionsArg) args.shift()
         ret.colorStops = args.map(toColorStopOrHint)
@@ -182,7 +190,7 @@ export function parseGradient(css: string): GradientNode[] {
         let hasOptionsArg = false
         const optionsArg = args[0]
         if (optionsArg[0].value === "from") {
-          const v = toUnit(optionsArg[1])
+          const v = toUnit(optionsArg[1], "deg")
           if (!v) throw new Error(`Angle expected: ` + stringify(optionsArg[1]))
           ret.angle = toDegrees(v)
           optionsArg.splice(0, 2)
@@ -200,15 +208,27 @@ export function parseGradient(css: string): GradientNode[] {
     })
 }
 
-function toUnit(node: Node | undefined, defaultUnit = ""): Dimension | false {
+function toUnit(node: Node | undefined, unitForZero: string): Length | false {
   if (node?.type !== "word") return false
   const ret = unit(node.value)
-  if (ret) ret.unit = ret.unit.toLowerCase() || defaultUnit
-  return ret
+  if (ret) {
+    if (ret.unit) {
+      ret.unit = ret.unit.toLowerCase()
+    } else if (ret.number === "0") {
+      // only 0 can be specified w/o unit
+      ret.unit = unitForZero
+    } else {
+      return false
+    }
+    return {
+      unit: ret.unit,
+      value: parseFloat(ret.number)
+    }
+  }
+  return false
 }
 
-function toDegrees({ number: str, unit }: Dimension): number {
-  const value = parseFloat(str)
+function toDegrees({ value, unit }: Length): number {
   switch (unit.toLowerCase()) {
     case "deg":
       return value
@@ -228,21 +248,21 @@ function toRgba(node: Node): RgbaColor {
 
 function toColorStopOrHint(nodes: Node[]): ColorStop | ColorHint {
   if (nodes.length === 2) {
-    const v = toUnit(nodes[1], "px")
-    if (v) {
+    const position = toUnit(nodes[1], "px")
+    if (position) {
       return {
         type: "color-stop",
-        position: dimensionToLength(v),
+        position,
         rgba: toRgba(nodes[0])
       }
     }
   }
   if (nodes.length === 1) {
-    const v = toUnit(nodes[0], "px")
-    if (v) {
+    const hint = toUnit(nodes[0], "px")
+    if (hint) {
       return {
         type: "color-hint",
-        hint: dimensionToLength(v)
+        hint
       }
     }
     return {
@@ -255,11 +275,11 @@ function toColorStopOrHint(nodes: Node[]): ColorStop | ColorHint {
 
 function toAngularColorStopOrHint(nodes: Node[]): AngularColorStop | ColorHint {
   if (nodes.length === 1) {
-    const v = toUnit(nodes[0])
-    if (v && ANGLE_OR_PERCENTAGE_UNITS.includes(v.unit)) {
+    const hint = toUnit(nodes[0], "deg")
+    if (hint && ANGLE_OR_PERCENTAGE_UNITS.includes(hint.unit)) {
       return {
         type: "color-hint",
-        hint: dimensionToLength(v)
+        hint
       }
     }
     return {
@@ -268,34 +288,27 @@ function toAngularColorStopOrHint(nodes: Node[]): AngularColorStop | ColorHint {
     }
   }
   if (nodes.length === 2) {
-    const v = toUnit(nodes[1])
-    if (v && ANGLE_OR_PERCENTAGE_UNITS.includes(v.unit)) {
+    const angle = toUnit(nodes[1], "deg")
+    if (angle && ANGLE_OR_PERCENTAGE_UNITS.includes(angle.unit)) {
       return {
         type: "angular-color-stop",
         rgba: toRgba(nodes[0]),
-        angle: dimensionToLength(v)
+        angle
       }
     }
   }
   if (nodes.length === 3) {
-    const angles = nodes.slice(1, 3).map(it => toUnit(it))
-    if (angles.every(v => v && ANGLE_OR_PERCENTAGE_UNITS.includes(v.unit))) {
+    const angles = nodes.slice(1, 3).map((it) => toUnit(it, "deg"))
+    if (angles.every((v) => v && ANGLE_OR_PERCENTAGE_UNITS.includes(v.unit))) {
       return {
         type: "angular-color-stop",
         rgba: toRgba(nodes[0]),
-        angle: (angles as Dimension[]).map(dimensionToLength) as AngularColorStop['angle']
+        angle: angles as AngularColorStop["angle"]
       }
     }
   }
 
   throw new Error("Invalid angular color stop: " + stringifySpacedArgs(nodes))
-}
-
-function dimensionToLength(v: Dimension): Length {
-  return {
-    unit: v.unit,
-    value: parseFloat(v.number)
-  }
 }
 
 function stringifySpacedArgs(nodes: Node[]): string {
