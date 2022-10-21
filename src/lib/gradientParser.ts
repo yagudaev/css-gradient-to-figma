@@ -92,106 +92,121 @@ export function parseGradient(css: string): GradientNode[] {
   return gradients
     .filter(
       (nodes) =>
+        // background-image can include non-gradient values, we can ignore them
         nodes.length === 1 && nodes[0].type === "function" && nodes[0].value.includes("-gradient")
     )
     .map(([node]) => {
       const args = splitCommaArgs((node as FunctionNode).nodes)
+      // strip vendor prefixes
       const type = node.value.replace(/^-webkit-/, "")
+
       if (type.includes("linear-gradient")) {
-        const ret: Partial<LinearGradient> = {
-          type: type as LinearGradient["type"]
-        }
-        if (args[0][0].value === "to") {
-          ret.gradientLine = {
-            type: "side-or-corner",
-            value: args
-              .shift()!
-              .slice(1)
-              .map((it) => it.value)
-              .join(" ") as SideOrCornerGradientLine["value"]
-          }
-        } else {
-          const first = toUnit(args[0][0], "deg")
-          if (first && ANGLE_UNITS.includes(first.unit)) {
-            ret.gradientLine = {
-              type: "angle",
-              value: toDegrees(first)
-            }
-            args.shift()
-          } else {
-            ret.gradientLine = {
-              type: "angle",
-              value: 180
-            }
-          }
-        }
-        ret.colorStops = args.map(toColorStopOrHint)
-        return ret as LinearGradient
+        return parseLinearGradient(type, args)
       } else if (type.includes("radial-gradient")) {
-        const ret: Partial<RadialGradient> = {
-          type: type as RadialGradient["type"],
-          endingShape: "ellipse",
-          size: "farthest-corner",
-          position: "center"
-        }
-        let hasOptionsArg = false
-        loop: for (let i = 0; i < args[0].length; i++) {
-          const arg = args[0][i]
-          switch (arg.value) {
-            case "circle":
-            case "ellipse":
-              hasOptionsArg = true
-              ret.endingShape = arg.value
-              break
-            case "closest-corner":
-            case "closest-side":
-            case "farthest-corner":
-            case "farthest-side":
-              hasOptionsArg = true
-              ret.size = arg.value
-              break
-            case "at":
-              hasOptionsArg = true
-              ret.position = stringifySpacedArgs(args[0].slice(i + 1))
-              break loop
-            default:
-              let length = toUnit(arg, "px")
-              if (length) {
-                hasOptionsArg = true
-                if (!Array.isArray(ret.size)) ret.size = []
-                ret.size.push(length)
-              } else if (!hasOptionsArg) {
-                break loop
-              }
-          }
-        }
-        if (hasOptionsArg) args.shift()
-        ret.colorStops = args.map(toColorStopOrHint)
-        return ret as RadialGradient
+        return parseRadialGradient(type, args)
       } else if (type.includes("conic-gradient")) {
-        const ret: Partial<ConicGradient> = {
-          type: type as ConicGradient["type"],
-          position: "center"
-        }
-        let hasOptionsArg = false
-        const optionsArg = args[0]
-        if (optionsArg[0].value === "from") {
-          const v = toUnit(optionsArg[1], "deg")
-          if (!v) throw new Error(`Angle expected: ` + stringify(optionsArg[1]))
-          ret.angle = toDegrees(v)
-          optionsArg.splice(0, 2)
-          hasOptionsArg = true
-        }
-        if (optionsArg[0].value === "at") {
-          ret.position = stringifySpacedArgs(optionsArg.slice(1))
-          hasOptionsArg = true
-        }
-        if (hasOptionsArg) args.shift()
-        ret.colorStops = args.map(toAngularColorStopOrHint)
-        return ret as ConicGradient
+        return parseConicGradient(type, args)
       }
       throw new Error("Unsupported gradient: " + stringify(node))
     })
+}
+
+function parseLinearGradient(type: string, args: parse.Node[][]) {
+  const ret: Partial<LinearGradient> = {
+    type: type as LinearGradient["type"]
+  }
+  if (args[0][0].value === "to") {
+    ret.gradientLine = {
+      type: "side-or-corner",
+      value: args
+        .shift()!
+        .slice(1)
+        .map((it) => it.value)
+        .join(" ") as SideOrCornerGradientLine["value"]
+    }
+  } else {
+    const first = toUnit(args[0][0], "deg")
+    if (first && ANGLE_UNITS.includes(first.unit)) {
+      ret.gradientLine = {
+        type: "angle",
+        value: toDegrees(first)
+      }
+      args.shift()
+    } else {
+      ret.gradientLine = {
+        type: "angle",
+        value: 180
+      }
+    }
+  }
+  ret.colorStops = args.map(toColorStopOrHint)
+  return ret as LinearGradient
+}
+
+function parseRadialGradient(type: string, args: parse.Node[][]) {
+  const ret: Partial<RadialGradient> = {
+    type: type as RadialGradient["type"],
+    endingShape: "ellipse",
+    size: "farthest-corner",
+    position: "center"
+  }
+  let hasOptionsArg = false
+  loop: for (let i = 0; i < args[0].length; i++) {
+    const arg = args[0][i]
+    switch (arg.value) {
+      case "circle":
+      case "ellipse":
+        hasOptionsArg = true
+        ret.endingShape = arg.value
+        break
+      case "closest-corner":
+      case "closest-side":
+      case "farthest-corner":
+      case "farthest-side":
+        hasOptionsArg = true
+        ret.size = arg.value
+        break
+      case "at":
+        hasOptionsArg = true
+        ret.position = stringifySpacedArgs(args[0].slice(i + 1))
+        break loop
+      default:
+        let length = toUnit(arg, "px")
+        if (length) {
+          hasOptionsArg = true
+          if (!Array.isArray(ret.size)) ret.size = []
+          ret.size.push(length)
+        } else if (!hasOptionsArg) {
+          break loop
+        }
+    }
+  }
+  if (hasOptionsArg) args.shift()
+  ret.colorStops = args.map(toColorStopOrHint)
+  return ret as RadialGradient
+}
+
+function parseConicGradient(type: string, args: parse.Node[][]) {
+  const ret: Partial<ConicGradient> = {
+    type: type as ConicGradient["type"],
+    position: "center"
+  }
+  let hasOptionsArg = false
+  const optionsArg = args[0]
+  if (optionsArg[0].value === "from") {
+    const v = toUnit(optionsArg[1], "deg")
+    if (!v) throw new Error(`Angle expected: ` + stringify(optionsArg[1]))
+    ret.angle = toDegrees(v)
+    optionsArg.splice(0, 2)
+    hasOptionsArg = true
+  }
+  if (optionsArg[0].value === "at") {
+    ret.position = stringifySpacedArgs(optionsArg.slice(1))
+    hasOptionsArg = true
+  }
+  if (hasOptionsArg) args.shift()
+  ret.colorStops = args.map(toAngularColorStopOrHint)
+  return ret as ConicGradient
 }
 
 function splitSpaceArgs(nodes: Node[]): Node[] {
