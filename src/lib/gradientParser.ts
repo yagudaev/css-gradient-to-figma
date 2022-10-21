@@ -115,6 +115,7 @@ function parseLinearGradient(type: string, args: parse.Node[][]) {
   const ret: Partial<LinearGradient> = {
     type: type as LinearGradient["type"]
   }
+
   if (args[0][0].value === "to") {
     ret.gradientLine = {
       type: "side-or-corner",
@@ -139,6 +140,7 @@ function parseLinearGradient(type: string, args: parse.Node[][]) {
       }
     }
   }
+
   ret.colorStops = args.map(toColorStopOrHint)
   return ret as LinearGradient
 }
@@ -228,22 +230,23 @@ function splitCommaArgs(nodes: Node[]): Node[][] {
 
 function toUnit(node: Node | undefined, unitForZero: string): Length | false {
   if (node?.type !== "word") return false
+
   const ret = unit(node.value)
-  if (ret) {
-    if (ret.unit) {
-      ret.unit = ret.unit.toLowerCase()
-    } else if (ret.number === "0") {
-      // only 0 can be specified w/o unit
-      ret.unit = unitForZero
-    } else {
-      return false
-    }
-    return {
-      unit: ret.unit,
-      value: parseFloat(ret.number)
-    }
+  if (!ret) return false
+
+  if (ret.unit) {
+    ret.unit = ret.unit.toLowerCase()
+  } else if (ret.number === "0") {
+    // only 0 can be specified w/o unit
+    ret.unit = unitForZero
+  } else {
+    return false
   }
-  return false
+
+  return {
+    unit: ret.unit,
+    value: parseFloat(ret.number)
+  }
 }
 
 function toDegrees({ value, unit }: Length): number {
