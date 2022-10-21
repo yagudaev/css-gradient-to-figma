@@ -91,16 +91,16 @@ function splitSpaceArgs(nodes: Node[]): Node[] {
 }
 
 function splitCommaArgs(nodes: Node[]): Node[][] {
-  const ret: Node[][] = []
-  let i = 0
-  for (let j = 0; j < nodes.length; j++) {
-    if (nodes[j].type === "div") {
-      ret.push(splitSpaceArgs(nodes.slice(i, j)))
-      i = j + 1
+  const result: Node[][] = []
+  let prevCommaPos = 0
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].type === "div") {
+      result.push(splitSpaceArgs(nodes.slice(prevCommaPos, i)))
+      prevCommaPos = i + 1
     }
   }
-  ret.push(splitSpaceArgs(nodes.slice(i)))
-  return ret
+  result.push(splitSpaceArgs(nodes.slice(prevCommaPos)))
+  return result
 }
 
 export function parseGradient(css: string): GradientNode[] {
