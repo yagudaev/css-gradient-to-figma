@@ -86,23 +86,6 @@ export type RadialGradient = {
 const ANGLE_UNITS = ["deg", "turn", "rad", "grad"]
 const ANGLE_OR_PERCENTAGE_UNITS = [...ANGLE_UNITS, "%"]
 
-function splitSpaceArgs(nodes: Node[]): Node[] {
-  return nodes.filter((it) => it.type !== "space")
-}
-
-function splitCommaArgs(nodes: Node[]): Node[][] {
-  const result: Node[][] = []
-  let prevCommaPos = 0
-  for (let i = 0; i < nodes.length; i++) {
-    if (nodes[i].type === "div") {
-      result.push(splitSpaceArgs(nodes.slice(prevCommaPos, i)))
-      prevCommaPos = i + 1
-    }
-  }
-  result.push(splitSpaceArgs(nodes.slice(prevCommaPos)))
-  return result
-}
-
 export function parseGradient(css: string): GradientNode[] {
   const parsed = parse(css)
   const gradients = splitCommaArgs(parsed.nodes)
@@ -209,6 +192,23 @@ export function parseGradient(css: string): GradientNode[] {
       }
       throw new Error("Unsupported gradient: " + stringify(node))
     })
+}
+
+function splitSpaceArgs(nodes: Node[]): Node[] {
+  return nodes.filter((it) => it.type !== "space")
+}
+
+function splitCommaArgs(nodes: Node[]): Node[][] {
+  const result: Node[][] = []
+  let prevCommaPos = 0
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].type === "div") {
+      result.push(splitSpaceArgs(nodes.slice(prevCommaPos, i)))
+      prevCommaPos = i + 1
+    }
+  }
+  result.push(splitSpaceArgs(nodes.slice(prevCommaPos)))
+  return result
 }
 
 function toUnit(node: Node | undefined, unitForZero: string): Length | false {
