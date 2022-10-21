@@ -41,6 +41,9 @@ export type Length = {
   unit: string
 }
 
+export type ColorStopList = ColorStopListItem[]
+export type ColorStopListItem = ColorStop | ColorHint | AngularColorStop
+
 export type ColorStop = {
   type: "color-stop"
   rgba: RgbaColor

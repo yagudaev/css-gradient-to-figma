@@ -1,5 +1,5 @@
 import { rotate, translate, compose, scale } from "transformation-matrix"
-import { GradientNode, parseGradient, ColorStop } from "../lib/gradientParser"
+import { GradientNode, parseGradient, ColorStop, ColorStopList } from "../lib/gradientParser"
 import type { RgbaColor } from "colord"
 
 function rgbaToFigmaRgba({ r, g, b, a }: RgbaColor): RGBA {
@@ -21,7 +21,9 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
     rotate(rotationAngle),
     translate(tx, ty)
   )
-  let colorStops = parsedGradient.colorStops.filter((it) => it.type === "color-stop") as ColorStop[]
+  let colorStops = (parsedGradient.colorStops as ColorStopList).filter(
+    (it: any) => it.type === "color-stop"
+  ) as ColorStop[]
   console.log("color stops", colorStops)
 
   let previousPosition: number | undefined = undefined
@@ -32,7 +34,7 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
       previousPosition = position
       return {
         position,
-      color: rgbaToFigmaRgba(stop.rgba)
+        color: rgbaToFigmaRgba(stop.rgba)
       }
     }),
     gradientTransform: [
