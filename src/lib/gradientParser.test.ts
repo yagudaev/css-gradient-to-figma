@@ -123,9 +123,6 @@ test("parseGradient(radial-gradient)", () => {
   expect(
     [
       "ellipse farthest-corner",
-      // 'ellipse cover',
-      // 'circle cover',
-      // 'center bottom, ellipse cover',
       "circle at 87.23px -58.3px",
       "farthest-side",
       "farthest-corner",
