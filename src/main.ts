@@ -1,5 +1,5 @@
 import { on, showUI } from "@create-figma-plugin/utilities"
-import { cssToFigmaGradient } from "./shared/color"
+import { cssToFigmaGradients } from "./shared/color"
 
 import { ReqInsertCSSHandler, ResizeWindowHandler } from "./shared/types"
 
@@ -21,6 +21,7 @@ export default function () {
     // testGradientAngles()
     // testGradientStops()
     // testRadialGradients()
+    // testGradientStacking()
   })
 }
 
@@ -39,8 +40,8 @@ function createRectangleWithFill(css: string) {
 
   // check if target has fills property
   if ("fills" in target) {
-    const gradient = cssToFigmaGradient(css, target.width, target.height)
-    target.fills = [gradient]
+    const gradients = cssToFigmaGradients(css, target.width, target.height)
+    target.fills = gradients
   } else {
     figma.notify("Please select a shape or frame with a fill")
   }
@@ -87,6 +88,18 @@ function testGradientStops() {
 
   // not yet supported, out of range numbers
   // createRectangleWithFill("linear-gradient(to right, #f0f -50%, #f00 140%)")
+}
+
+function testGradientStacking() {
+  createRectangleWithFill(`
+    linear-gradient(
+      217deg,
+      rgba(255, 0, 0, 0.8),
+      rgba(255, 0, 0, 0) 70.71%
+    ),
+    linear-gradient(127deg, rgba(0, 255, 0, 0.8), rgba(0, 255, 0, 0) 70.71%),
+    linear-gradient(336deg, rgba(0, 0, 255, 0.8), rgba(0, 0, 255, 0) 70.71%)
+  `)
 }
 
 function testRadialGradients() {

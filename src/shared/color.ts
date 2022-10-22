@@ -1,37 +1,30 @@
-import hexRgbLib, { RgbaObject as RGBALib } from "hex-rgb"
-import rgbToHexLib from "rgb-hex"
-import {
-  parse as parseGradient,
-  GradientNode,
-  LinearGradientNode,
-  RepeatingLinearGradientNode,
-  ColorStop
-} from "gradient-parser"
 import { rotate, translate, compose, scale } from "transformation-matrix"
+import { GradientNode, parseGradient, ColorStop, ColorStopList } from "../lib/gradientParser"
+import type { RgbaColor } from "colord"
 
-export function hexToRgb(hex: string): RGB {
-  console.log("trying to conver hex to rgb", { hex })
-  const converted = hexRgbLib(hex) as RGBALib
-  console.log("successfully converted hex to rgb", { converted })
-  return { r: converted.red / 255.0, g: converted.green / 255.0, b: converted.blue / 255.0 }
+function rgbaToFigmaRgba({ r, g, b, a }: RgbaColor): RGBA {
+  return { r: r / 255.0, g: g / 255.0, b: b / 255.0, a: a }
 }
 
-export function hexToRgba(hex: string): RGBA {
-  return { ...hexToRgb(hex), a: 1.0 }
-}
-
-export function rgbToHex({ r, g, b }: RGB): string {
-  const converted = rgbToHexLib(r * 255, g * 255, b * 255)
-  return `#${converted}`
-}
-
-export function rgbaToFigmaRgba([r, g, b, a]: [string, string, string, string?]): RGBA {
-  return { r: Number(r) / 255.0, g: Number(g) / 255.0, b: Number(b) / 255.0, a: Number(a) || 1.0 }
-}
-
-export function cssToFigmaGradient(css: string, width = 1, height = 1): GradientPaint {
+/**
+ * Calculates GradientPaints for a css gradient value given to <image> values like `background-image:` and `background:`
+ * W3C specs: https://www.w3.org/TR/css-images-4/#gradients and https://www.w3.org/TR/css-images-3/#gradients
+ *
+ * @param css raw gradient text
+ * @param width
+ * @param height
+ * @returns GradientPaints in order of painting (reverse order of appearance in css) - this is important to let figma
+ * properly blend the gradients
+ */
+export function cssToFigmaGradients(css: string, width = 1, height = 1): GradientPaint[] {
   console.log("trying to parse gradient", css)
-  const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
+  const parsedGradients = parseGradient(css.replace(/;$/, ""))
+  return parsedGradients
+    .map((parsedGradient) => cssToFigmaGradient(parsedGradient, width, height))
+    .reverse()
+}
+
+function cssToFigmaGradient(parsedGradient: GradientNode, width = 1, height = 1): GradientPaint {
   console.log("parsedGradient", parsedGradient)
 
   const gradientLength = calculateLength(parsedGradient, width, height)
@@ -44,18 +37,9 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
     rotate(rotationAngle),
     translate(tx, ty)
   )
-  let colorStops = parsedGradient.colorStops
-  if (
-    parsedGradient.type === "radial-gradient" ||
-    parsedGradient.type === "repeating-radial-gradient"
-  ) {
-    if (
-      colorStops[0].type === "literal" &&
-      (colorStops[0].length?.type as string) === "position-keyword"
-    ) {
-      colorStops = colorStops.slice(1)
-    }
-  }
+  let colorStops = (parsedGradient.colorStops as ColorStopList).filter(
+    (it: any) => it.type === "color-stop"
+  ) as ColorStop[]
   console.log("color stops", colorStops)
 
   let previousPosition: number | undefined = undefined
@@ -66,12 +50,7 @@ export function cssToFigmaGradient(css: string, width = 1, height = 1): Gradient
       previousPosition = position
       return {
         position,
-        color:
-          stop.type === "hex"
-            ? hexToRgba(stop.value)
-            : stop.type === "literal"
-            ? hexToRgba("#000000")
-            : rgbaToFigmaRgba(stop.value)
+        color: rgbaToFigmaRgba(stop.rgba)
       }
     }),
     gradientTransform: [
@@ -93,26 +72,25 @@ function getPosition(
   if (total <= 1) return 0
   // browsers will enforce increasing positions (red 50%, blue 0px) becomes (red 50%, blue 50%)
   const normalize = (v: number) => Math.max(previousPosition, Math.min(1, v))
-  if (stop.length) {
-    const value = parseFloat(stop.length.value)
-    if (value <= 0) {
+  if (stop.position) {
+    if (stop.position.value <= 0) {
       // TODO: add support for negative color stops, figma doesn't support it, instead we will
       // have to scale the transform to fit the negative color stops
       return normalize(0)
     }
-    switch (stop.length.type) {
+    switch (stop.position.unit) {
       case "%":
-        return normalize(value / 100)
+        return normalize(stop.position.value / 100)
       case "px":
-        return normalize(value / gradientLength)
+        return normalize(stop.position.value / gradientLength)
       default:
-        console.warn("Unsupported stop position unit: ", stop.length.type)
+        console.warn("Unsupported stop position unit: ", stop.position.unit)
     }
   }
   return normalize(index / (total - 1))
 }
 
-export function cssToFigmaGradientTypes(
+function cssToFigmaGradientTypes(
   type: GradientNode["type"]
 ): "GRADIENT_LINEAR" | "GRADIENT_RADIAL" | "GRADIENT_ANGULAR" | "GRADIENT_DIAMOND" {
   switch (type) {
@@ -140,8 +118,8 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation?.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
           additionalRotation = -90
           break
@@ -173,18 +151,16 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation?.type === "angular") {
+    } else {
       // css angle is clockwise from the y-axis, figma angles are counter-clockwise from the x-axis
-      additionalRotation = (parseCssAngle(parsedGradient.orientation.value) + 90) % 360
+      additionalRotation = (convertCssAngle(parsedGradient.gradientLine.value) + 90) % 360
       console.log(
         "parsed angle",
-        parsedGradient.orientation.value,
-        parseCssAngle(parsedGradient.orientation.value),
+        parsedGradient.gradientLine.value,
+        convertCssAngle(parsedGradient.gradientLine.value),
         additionalRotation
       )
       return degreesToRadians(additionalRotation)
-    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
-      additionalRotation = 0 // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
     // if size is 'furthers-corner' which is the default, then the rotation is 45 to reach corner
@@ -199,8 +175,7 @@ function calculateRotationAngle(parsedGradient: GradientNode): number {
 type FigmaAngle = number // 0-360, CCW from x-axis
 type CssAngle = number // 0-360, CW from y-axis
 
-function parseCssAngle(angleStr: string): FigmaAngle {
-  let angle = Number(angleStr) as CssAngle
+function convertCssAngle(angle: CssAngle): FigmaAngle {
   // positive angles only
   angle = angle < 0 ? 360 + angle : angle
   // convert to CCW angle use by figma
@@ -213,8 +188,8 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation?.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
         case "right":
           return width
@@ -233,12 +208,12 @@ function calculateLength(parsedGradient: GradientNode, width: number, height: nu
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation?.type === "angular") {
+    } else if (parsedGradient.gradientLine.type === "angle") {
       // from w3c: abs(W * sin(A)) + abs(H * cos(A))
       // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
-      const rads = degreesToRadians(parseCssAngle(parsedGradient.orientation.value))
+      const rads = degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value))
       return Math.abs(width * Math.sin(rads)) + Math.abs(height * Math.cos(rads))
-    } else if (!parsedGradient.orientation) {
+    } else if (!parsedGradient.gradientLine) {
       return height // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
@@ -254,8 +229,8 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation?.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
         case "right":
         case "bottom":
@@ -274,17 +249,15 @@ function calculateScale(parsedGradient: GradientNode): [number, number] {
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation?.type === "angular") {
+    } else if (parsedGradient.gradientLine.type === "angle") {
       // from w3c: abs(W * sin(A)) + abs(H * cos(A))
       // https://w3c.github.io/csswg-drafts/css-images-3/#linear-gradients
       // W and H are unit vectors, so we can just use 1
       const scale =
-        Math.abs(Math.sin(degreesToRadians(parseCssAngle(parsedGradient.orientation.value)))) +
-        Math.abs(Math.cos(degreesToRadians(parseCssAngle(parsedGradient.orientation.value))))
+        Math.abs(Math.sin(degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value)))) +
+        Math.abs(Math.cos(degreesToRadians(convertCssAngle(parsedGradient.gradientLine.value))))
 
       return [1.0 / scale, 1.0 / scale]
-    } else if (!parsedGradient.orientation) {
-      return [1.0, 1.0] // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
     // if size is 'furthers-corner' which is the default, then the scale is sqrt(2)
@@ -301,8 +274,8 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
     parsedGradient.type === "linear-gradient" ||
     parsedGradient.type === "repeating-linear-gradient"
   ) {
-    if (parsedGradient.orientation?.type === "directional") {
-      switch (parsedGradient.orientation.value) {
+    if (parsedGradient.gradientLine.type === "side-or-corner") {
+      switch (parsedGradient.gradientLine.value) {
         case "left":
           return [-1, -0.5]
         case "right":
@@ -326,8 +299,8 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
         default:
           throw "unsupported linear gradient orientation"
       }
-    } else if (parsedGradient.orientation?.type === "angular") {
-      const angle = parseCssAngle(parsedGradient.orientation.value)
+    } else if (parsedGradient.gradientLine.type === "angle") {
+      const angle = convertCssAngle(parsedGradient.gradientLine.value)
       if (angle === 0) {
         return [-0.5, -1]
       } else if (angle === 90) {
@@ -345,14 +318,11 @@ function calculateTranslationToCenter(parsedGradient: GradientNode): [number, nu
       } else if (angle > 270 && angle < 360) {
         return [0, -1]
       }
-    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.orientation) {
+    } else if (parsedGradient.type === "linear-gradient" && !parsedGradient.gradientLine) {
       return [-0.5, 0] // default to bottom
     }
   } else if (parsedGradient.type === "radial-gradient") {
-    if (
-      parsedGradient.colorStops[0].length?.value === "center" ||
-      parsedGradient.colorStops[0].length === undefined
-    ) {
+    if (parsedGradient.position === "center") {
       return [0, 0]
     }
 

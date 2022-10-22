@@ -1,8 +1,8 @@
 import { Container, Textbox, Text, Button } from "@create-figma-plugin/ui"
-import { parse as parseGradient } from "gradient-parser"
 import { emit } from "@create-figma-plugin/utilities"
 import { h, JSX } from "preact"
 import { useState } from "preact/hooks"
+import { parseGradient } from "../lib/gradientParser"
 import { ReqInsertCSSHandler } from "../shared/types"
 
 export function App() {
