@@ -6,9 +6,25 @@ function rgbaToFigmaRgba({ r, g, b, a }: RgbaColor): RGBA {
   return { r: r / 255.0, g: g / 255.0, b: b / 255.0, a: a }
 }
 
-export function cssToFigmaGradient(css: string, width = 1, height = 1): GradientPaint {
+/**
+ * Calculates GradientPaints for a css gradient value given to <image> values like `background-image:` and `background:`
+ * W3C specs: https://www.w3.org/TR/css-images-4/#gradients and https://www.w3.org/TR/css-images-3/#gradients
+ *
+ * @param css raw gradient text
+ * @param width
+ * @param height
+ * @returns GradientPaints in order of painting (reverse order of appearance in css) - this is important to let figma
+ * properly blend the gradients
+ */
+export function cssToFigmaGradients(css: string, width = 1, height = 1): GradientPaint[] {
   console.log("trying to parse gradient", css)
-  const parsedGradient = parseGradient(css.replace(/;$/, ""))[0]
+  const parsedGradients = parseGradient(css.replace(/;$/, ""))
+  return parsedGradients
+    .map((parsedGradient) => cssToFigmaGradient(parsedGradient, width, height))
+    .reverse()
+}
+
+function cssToFigmaGradient(parsedGradient: GradientNode, width = 1, height = 1): GradientPaint {
   console.log("parsedGradient", parsedGradient)
 
   const gradientLength = calculateLength(parsedGradient, width, height)

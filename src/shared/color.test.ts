@@ -1,8 +1,8 @@
 import { assert, expect, test } from "vitest"
-import { cssToFigmaGradient } from "./color"
+import { cssToFigmaGradients } from "./color"
 
-test("cssToFigmaGradient(linear-gradient)", () => {
-  expect(cssToFigmaGradient("linear-gradient(to left, red, blue)")).toMatchInlineSnapshot(`
+test("cssToFigmaGradients(linear-gradient)", () => {
+  expect(cssToFigmaGradients("linear-gradient(to left, red, blue)")).toMatchInlineSnapshot(`
     {
       "gradientStops": [
         {
@@ -38,4 +38,5 @@ test("cssToFigmaGradient(linear-gradient)", () => {
       ],
       "type": "GRADIENT_LINEAR",
     }
-  `)})
+  `)
+})
